@@ -1,1 +1,287 @@
-hello
+////////////////////////////////////////////////////////////////////////// settings
+
+
+//default settings
+numpad_format = True
+randomized = True
+AI_begins = True
+
+
+                //custom settings
+    print("use numpad format? (type yes or y)")
+    if input() in ("y", "yes"):
+        numpad_format = True        //numpad format input or original format input
+    else:
+        numpad_format = False
+    print("should the AI randomize? (type yes or y)")
+    if input() in ("y", "yes"):
+        randomized = True           //randomizes AI decision if there are mulitiple best possibilities
+    else:
+        randomized = False
+    print("shoud the AI begin? (type yes or y)")
+    if input() in ("y", "yes"):
+        AI_begins = True        //asks every game if the AI should start
+    else:
+        AI_begins = False
+
+
+
+////////////////////////////////////////////////////////////////////////// helper functions
+
+
+def has_won(grid):  //evaluates the winner of a given grid if there is one
+    evaluation = [(grid[0] + grid[1] + grid[2]), (grid[3] + grid[4] + grid[5]), (grid[6] + grid[7] + grid[8]),
+                  (grid[0] + grid[3] + grid[6]), (grid[1] + grid[4] + grid[7]), (grid[2] + grid[5] + grid[8]),
+                  (grid[0] + grid[4] + grid[8]), (grid[6] + grid[4] + grid[2])]
+    for i in evaluation:
+        if i == -3:
+            return -1
+        elif i == 3:
+            return 1
+    return 0
+
+
+def build_node(grid, player, i):
+    new_grid = [0,0,0,0,0,0,0,0,0]
+    for j in (0,1,2,3,4,5,6,7,8):
+        new_grid[j] = grid[j]
+    new_grid[i] = player
+    return Node(grid = new_grid, player = -player, move = i, winner = has_won(new_grid))
+
+
+
+//////////////////////////////////////////////////////////////////////////
+/*
+Node formt: explanation
+
+grid format: filled with -1 or 1 if 
+       0 | 1 | 2
+       3 | 4 | 5
+       6 | 7 | 8
+   example: grid = [0, -1, 0, 1, 1, 0, -1, 0, 0]
+
+player: the player how made the move that lead to this position
+   AI = 1 = "O" , user = -1 = "X"
+
+move:  the move that lead to this position (given as the grid position)
+
+winner:
+for leafs: return from has_won function
+   0 or -1 or 1
+*/
+
+class Node(object):
+    def __init__(self, grid, player, move, winner):
+        self.grid = grid
+        self.player = player
+        self.move = move
+        self.winner = winner
+        self.children = []
+
+
+
+    def add_child(self, obj):
+        self.children.append(obj)
+
+
+
+    def build_tree(self):   //recursive method that builds a tree for every possible move and evaluates every Node at the end
+        if self.winner == 0:
+            for i in range(9):
+                if self.grid[i] == 0: //only continues the tree if game is not finished
+                    self.add_child(build_node(self.grid, self.player, i))
+            children_winner = [-2] //evaluation
+            for child in self.children:
+                child.build_tree()
+                children_winner.append(child.winner * self.player) //evaluation
+                self.winner = max(children_winner) * self.player //evaluation
+
+
+
+//////////////////////////////////////////////////////////////////////////
+
+
+
+    def user_move_mover(self, user_move):
+        for child in self.children:
+            if child.move == user_move:
+                if child.children == []:
+                    if child.winner == 0:
+                        child.draw()
+                    else:
+                        child.winner()
+                else:
+                    child.node_search()
+                pass
+
+
+    def node_search(self):
+        value = -2
+        for child in self.children:
+            if randomized:                  //random version chooses (not really random) from as equal evaluated best options
+                if (child.winner > value) | ((child.winner == value) & (random.randint(0, 9) > 6)): //randomized version
+                    value = child.winner        
+                    node = child
+            else:
+                if child.winner > value:    //persistent version
+                    value = child.winner        
+                    node = child
+        if node.children == []:
+            if node.winner == 0:
+                node.draw()
+            else:
+                node.looser()
+        node.input_output()
+
+
+
+////////////////////////////////////////////////////////////////////////// UI
+
+
+
+    def input_output(self):
+        self.show_grid()
+        print()
+        user_move = input()
+        if user_move in ["1","2","3","4","5","6","7","8","9"]:
+            user_move = int(user_move)
+            user_move -= 1
+        else:
+            print("baka")
+            print("input must be one of 1,2,3,4,5,6,7,8,9")
+            print("try again")
+            self.input_output()
+        if self.grid[user_move] != 0:
+            print("baka")
+            print("not a possible move")
+            print("try again")
+            self.input_output()
+        else:
+            self.user_move_mover(user_move)
+
+
+
+    def draw(self):
+        self.show_grid()
+        print()
+        print("draw")
+        main()
+        return "draw"
+
+
+    def winner(self):
+        self.show_grid()
+        print()
+        print("you won")
+        main()
+        return "winner"
+
+
+    def looser(self):
+        self.show_grid()
+        print()
+        print("you loose")
+        main()
+        return "looser"
+
+
+    def show_grid(self):
+        ggrid = []
+        for i in range(9):
+            current = self.grid[i]
+            if current == 0:
+                ggrid.append(" ")
+            if current == -1:
+                ggrid.append("X")
+            if current == 1:
+                ggrid.append("O")
+        if numpad_format:
+            print(" ",ggrid[6],"|",ggrid[7],"|",ggrid[8])   //alternative numpad format
+            print(" ",ggrid[3],"|",ggrid[4],"|",ggrid[5])
+            print(" ",ggrid[0],"|",ggrid[1],"|",ggrid[2])
+        else:
+            print(" ",ggrid[0],"|",ggrid[1],"|",ggrid[2])  //original farmat
+            print(" ",ggrid[3],"|",ggrid[4],"|",ggrid[5])
+            print(" ",ggrid[6],"|",ggrid[7],"|",ggrid[8])
+
+
+
+////////////////////////////////////////////////////////////////////////// main
+
+
+if AI_begins:
+    root = Node([0,0,0,0,0,0,0,0,0], 1, 0, 0) //Node with empty grid
+    root.build_tree()   //builds tree on empty grid
+else:
+    root = Node([0,0,0,0,0,0,0,0,0], -1, 0, 0) //Node with empty grid
+    root.build_tree()   //builds tree on empty grid
+    
+
+def main():
+    print()
+    print()
+    print()
+    print("Return the number at which grid position your X shall be")
+    if numpad_format:
+        print("7","|","8","|","9") //alternative numpad format
+        print("4","|","5","|","6")
+        print("1","|","2","|","3")
+    else:
+        print("1","|","2","|","3") //original farmat
+        print("4","|","5","|","6")
+        print("7","|","8","|","9")
+    print()
+    if AI_begins:
+        if randomized:      //AI evaluates every first movve as 0, so we can randomize
+            (root.children[random.randint(0, 8)]).input_output()  //randomized version
+        else:
+            (root.children[4]).input_output()                    //persistent version
+    else:
+        root.input_output()
+    
+    //for c in root.children:        //debugging
+    //    print ("1.", c.grid, c.player, c.move, c.winner)
+    //    for i in c.children:
+    //        print("2.", i.grid, i.player,i.move, i.winner)
+    //        for j in i.children:
+    //            print("3.", j.grid, j.player, j.move, j.winner)
+    //            for k in j.children:
+    //                print("4.", k.grid, k.player, k.move, k.winner)
+
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+//created 2021 by Major Mistake
+
+/*
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or
+distribute this software, either in source code form or as a compiled
+binary, for any purpose, commercial or non-commercial, and by any
+means.
+
+In jurisdictions that recognize copyright laws, the author or authors
+of this software dedicate any and all copyright interest in the
+software to the public domain. We make this dedication for the benefit
+of the public at large and to the detriment of our heirs and
+successors. We intend this dedication to be an overt act of
+relinquishment in perpetuity of all present and future rights to this
+software under copyright law.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+For more information, please refer to <https://unlicense.org>
+*/
